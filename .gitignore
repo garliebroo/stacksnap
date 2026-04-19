@@ -1,0 +1,9 @@
+node_modules/
+build/
+coverage/
+*.swp
+.env.local
+.parcel-cache/
+npm-debug.log*
+*~
+.DS_Store
