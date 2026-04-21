@@ -87,6 +87,13 @@ describe('loadSnapshot', () => {
     fs.readFileSync.mockReturnValue(JSON.stringify(mockData));
 
     const result = loadSnapshot('mystack');
-    expect(result.createdAt).toBe('2024-01-01');
+    expect(result).toEqual(mockData);
+  });
+
+  it('throws if snapshot file contains invalid JSON', () => {
+    fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockReturnValue('not valid json {{');
+
+    expect(() => loadSnapshot('corrupt')).toThrow();
   });
 });
