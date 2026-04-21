@@ -56,4 +56,16 @@ function listSnapshots() {
     .map(f => f.replace('.json', ''));
 }
 
-module.exports = { saveSnapshot, loadSnapshot, listSnapshots, SNAPSHOT_DIR };
+/**
+ * Deletes a snapshot by name. Throws if the snapshot doesn't exist.
+ */
+function deleteSnapshot(name) {
+  const snapshotPath = path.join(SNAPSHOT_DIR, `${name}.json`);
+  if (!fs.existsSync(snapshotPath)) {
+    throw new Error(`Snapshot '${name}' not found at ${snapshotPath}`);
+  }
+  fs.unlinkSync(snapshotPath);
+  console.log(`[stacksnap] Snapshot '${name}' deleted.`);
+}
+
+module.exports = { saveSnapshot, loadSnapshot, listSnapshots, deleteSnapshot, SNAPSHOT_DIR };
