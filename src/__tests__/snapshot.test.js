@@ -42,6 +42,20 @@ describe('saveSnapshot', () => {
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Skipping 'missing'"));
   });
+
+  it('creates the snapshot directory if it does not exist', () => {
+    fs.existsSync.mockImplementation((p) => p.includes('.nvmrc'));
+    fs.readFileSync.mockReturnValue('v18.0.0');
+    fs.mkdirSync.mockImplementation(() => {});
+    fs.writeFileSync.mockImplementation(() => {});
+
+    saveSnapshot('mystack', { nvmrc: '~/.nvmrc' });
+
+    expect(fs.mkdirSync).toHaveBeenCalledWith(
+      expect.stringContaining('.stacksnap'),
+      expect.objectContaining({ recursive: true })
+    );
+  });
 });
 
 describe('listSnapshots', () => {
@@ -51,6 +65,13 @@ describe('listSnapshots', () => {
 
     const list = listSnapshots();
     expect(list).toEqual(['work', 'home']);
+  });
+
+  it('returns empty array when snapshot directory does not exist', () => {
+    fs.existsSync.mockReturnValue(false);
+
+    const list = listSnapshots();
+    expect(list).toEqual([]);
   });
 });
 
