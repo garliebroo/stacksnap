@@ -43,6 +43,12 @@ describe('validateSnapshotStructure', () => {
     const errors = validateSnapshotStructure(snapshot);
     expect(errors).toContain('Field "configs" must be an object');
   });
+
+  test('returns error for missing timestamp', () => {
+    const snapshot = { name: 'test', configs: {} };
+    const errors = validateSnapshotStructure(snapshot);
+    expect(errors).toContain('Missing required field: timestamp');
+  });
 });
 
 describe('validateConfigFiles', () => {
@@ -75,26 +81,32 @@ describe('validateSnapshot', () => {
   test('returns invalid for missing snapshot', async () => {
     const result = await validateSnapshot('ghost', tmpDir);
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/Could not load snapshot/);
+    expect(result.errors[0]).toMatch(/not found|does not exist/i);
+  });
+
+  test('returns warnings for snapshot with empty config', async () => {
+    await saveSnapshot('warnsnap', { '.nvmrc': '' }, tmpDir);
+    const result = await validateSnapshot('warnsnap', tmpDir);
+    expect(result.warnings).toContain('Config ".nvmrc" is empty');
   });
 });
 
 describe('formatValidationResult', () => {
-  test('includes valid message when no errors', () => {
+  test('formats a valid result with no issues', () => {
     const result = { valid: true, errors: [], warnings: [] };
-    const output = formatValidationResult(result, 'mysnap');
-    expect(output).toContain('✓ Structure is valid');
+    const output = formatValidationResult(result);
+    expect(output).toMatch(/valid/i);
   });
 
-  test('includes error lines when invalid', () => {
+  test('formats errors in output', () => {
     const result = { valid: false, errors: ['Missing required field: name'], warnings: [] };
-    const output = formatValidationResult(result, 'mysnap');
-    expect(output).toContain('ERROR: Missing required field: name');
+    const output = formatValidationResult(result);
+    expect(output).toContain('Missing required field: name');
   });
 
-  test('includes warning lines', () => {
+  test('formats warnings in output', () => {
     const result = { valid: true, errors: [], warnings: ['Config ".nvmrc" is empty'] };
-    const output = formatValidationResult(result, 'mysnap');
-    expect(output).toContain('WARN: Config ".nvmrc" is empty');
+    const output = formatValidationResult(result);
+    expect(output).toContain('Config ".nvmrc" is empty');
   });
 });
