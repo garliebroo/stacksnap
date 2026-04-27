@@ -56,6 +56,20 @@ function listPinned() {
   return Object.entries(pins).map(([name, info]) => ({ name, ...info }));
 }
 
+/**
+ * Updates the label of an existing pinned snapshot.
+ * Throws if the snapshot is not currently pinned.
+ */
+function updatePinLabel(snapshotName, label) {
+  const pins = loadPins();
+  if (!pins[snapshotName]) {
+    throw new Error(`Snapshot "${snapshotName}" is not pinned.`);
+  }
+  pins[snapshotName].label = label || null;
+  savePins(pins);
+  return pins[snapshotName];
+}
+
 module.exports = {
   getPinsFilePath,
   loadPins,
@@ -63,5 +77,6 @@ module.exports = {
   pinSnapshot,
   unpinSnapshot,
   isPinned,
-  listPinned
+  listPinned,
+  updatePinLabel
 };
