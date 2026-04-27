@@ -1,121 +1,98 @@
 #!/usr/bin/env node
-
-/**
- * Main CLI entry point for stacksnap.
- * Dispatches subcommands to their respective handlers.
- */
-
-const path = require('path');
 const { saveSnapshot, loadSnapshot, listSnapshots } = require('./snapshot');
 const { restoreSnapshot } = require('./restore');
-const { diffSnapshotsByName, formatDiff } = require('./diff');
+const { diffSnapshotsByName } = require('./diff');
+const path = require('path');
 
-const args = process.argv.slice(2);
-const command = args[0];
+const SNAPSHOT_DIR = path.join(process.env.HOME || '.', '.stacksnap', 'snapshots');
 
 function printUsage() {
-  console.log(`
-stacksnap — snapshot and restore local dev environment configs
-
-Usage:
-  stacksnap snapshot [name]       Save a new snapshot (auto-names if omitted)
-  stacksnap restore <name>        Restore a snapshot by name
-  stacksnap list                  List all saved snapshots
-  stacksnap diff <name1> <name2>  Diff two snapshots
-  stacksnap export <name>         Export a snapshot to a zip file
-  stacksnap tag <subcommand>      Manage snapshot tags
-  stacksnap search <query>        Search snapshots by name or tag
-  stacksnap schedule <subcommand> Manage scheduled snapshots
-  stacksnap help                  Show this help message
-`);
+  console.log('Usage: stacksnap <command> [options]');
+  console.log('');
+  console.log('Commands:');
+  console.log('  save <name>              Save current environment as a snapshot');
+  console.log('  restore <name>           Restore a snapshot');
+  console.log('  list                     List all snapshots');
+  console.log('  diff <snap1> <snap2>     Diff two snapshots');
+  console.log('  export                   Export snapshots (see cli-export)');
+  console.log('  tag                      Manage tags (see cli-tag)');
+  console.log('  search                   Search snapshots (see cli-search)');
+  console.log('  schedule                 Manage schedules (see cli-schedule)');
+  console.log('  compare                  Compare snapshots (see cli-compare)');
+  console.log('  rename                   Rename a snapshot (see cli-rename)');
+  console.log('  notes                    Manage notes (see cli-notes)');
+  console.log('  pin                      Pin/unpin snapshots (see cli-pin)');
+  console.log('  archive                  Archive snapshots (see cli-archive)');
+  console.log('  validate                 Validate snapshots (see cli-validate)');
+  console.log('  merge                    Merge snapshots (see cli-merge)');
+  console.log('  history                  View snapshot history (see cli-history)');
+  console.log('  cleanup                  Clean up old snapshots (see cli-cleanup)');
+  console.log('  duplicate                Duplicate a snapshot (see cli-duplicate)');
+  console.log('  size                     Show snapshot sizes (see cli-size)');
+  console.log('  filter                   Filter snapshots (see cli-filter)');
+  console.log('  metadata                 Manage snapshot metadata (see cli-metadata)');
+  console.log('  lock                     Lock/unlock snapshots (see cli-lock)');
 }
 
-async function main() {
-  if (!command || command === 'help' || command === '--help' || command === '-h') {
+function run(argv = process.argv.slice(2)) {
+  const [command, ...rest] = argv;
+
+  if (!command || command === '--help' || command === '-h') {
     printUsage();
-    process.exit(0);
+    return;
   }
 
-  try {
-    switch (command) {
-      case 'snapshot': {
-        const name = args[1] || `snapshot-${Date.now()}`;
-        const snapshot = await saveSnapshot(name);
-        console.log(`✓ Snapshot saved: ${snapshot.name}`);
-        break;
-      }
-
-      case 'restore': {
-        const name = args[1];
-        if (!name) {
-          console.error('Error: restore requires a snapshot name');
-          console.error('Usage: stacksnap restore <name>');
-          process.exit(1);
-        }
-        await restoreSnapshot(name);
-        console.log(`✓ Snapshot restored: ${name}`);
-        break;
-      }
-
-      case 'list': {
-        const snapshots = await listSnapshots();
-        if (snapshots.length === 0) {
-          console.log('No snapshots found.');
-        } else {
-          console.log(`Found ${snapshots.length} snapshot(s):\n`);
-          snapshots.forEach((s) => {
-            const date = new Date(s.createdAt).toLocaleString();
-            console.log(`  ${s.name.padEnd(40)} ${date}`);
-          });
-        }
-        break;
-      }
-
-      case 'diff': {
-        const [, name1, name2] = args;
-        if (!name1 || !name2) {
-          console.error('Error: diff requires two snapshot names');
-          console.error('Usage: stacksnap diff <name1> <name2>');
-          process.exit(1);
-        }
-        const diff = await diffSnapshotsByName(name1, name2);
-        console.log(formatDiff(diff));
-        break;
-      }
-
-      case 'export': {
-        // Delegate to cli-export
-        require('./cli-export');
-        break;
-      }
-
-      case 'tag': {
-        // Delegate to cli-tag
-        require('./cli-tag');
-        break;
-      }
-
-      case 'search': {
-        // Delegate to cli-search
-        require('./cli-search');
-        break;
-      }
-
-      case 'schedule': {
-        // Delegate to cli-schedule
-        require('./cli-schedule');
-        break;
-      }
-
-      default:
-        console.error(`Unknown command: ${command}`);
-        printUsage();
-        process.exit(1);
-    }
-  } catch (err) {
-    console.error(`Error: ${err.message}`);
-    process.exit(1);
+  if (command === 'save') {
+    const [name] = rest;
+    if (!name) { console.error('Snapshot name required.'); process.exitCode = 1; return; }
+    saveSnapshot(SNAPSHOT_DIR, name);
+    console.log(`Snapshot "${name}" saved.`);
+    return;
   }
+
+  if (command === 'restore') {
+    const [name] = rest;
+    if (!name) { console.error('Snapshot name required.'); process.exitCode = 1; return; }
+    restoreSnapshot(SNAPSHOT_DIR, name);
+    console.log(`Snapshot "${name}" restored.`);
+    return;
+  }
+
+  if (command === 'list') {
+    const snaps = listSnapshots(SNAPSHOT_DIR);
+    if (!snaps.length) { console.log('No snapshots found.'); return; }
+    snaps.forEach(s => console.log(` - ${s}`));
+    return;
+  }
+
+  if (command === 'diff') {
+    const [a, b] = rest;
+    if (!a || !b) { console.error('Two snapshot names required.'); process.exitCode = 1; return; }
+    const result = diffSnapshotsByName(SNAPSHOT_DIR, a, b);
+    const { formatDiff } = require('./diff');
+    console.log(formatDiff(result));
+    return;
+  }
+
+  const subClis = {
+    export: './cli-export', tag: './cli-tag', search: './cli-search',
+    schedule: './cli-schedule', compare: './cli-compare', rename: './cli-rename',
+    notes: './cli-notes', pin: './cli-pin', archive: './cli-archive',
+    validate: './cli-validate', merge: './cli-merge', history: './cli-history',
+    cleanup: './cli-cleanup', duplicate: './cli-duplicate', size: './cli-size',
+    filter: './cli-filter', metadata: './cli-metadata', lock: './cli-lock',
+  };
+
+  if (subClis[command]) {
+    const sub = require(subClis[command]);
+    if (typeof sub.run === 'function') { sub.run(rest); return; }
+  }
+
+  console.error(`Unknown command: ${command}`);
+  printUsage();
+  process.exitCode = 1;
 }
 
-main();
+if (require.main === module) run();
+
+module.exports = { printUsage, run };
